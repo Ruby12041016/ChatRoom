@@ -3,7 +3,7 @@
 
 void Cli_Account::Register(const std::string& username, const std::string& email, const std::string& pwd, const std::string& phone){
     nlohmann::json request;
-    request["type"] = MSG_REGISTER;
+    request["msg_type"] = MSG_REGISTER;
     request["data"] = {{"username", username},
                        {"email", email},
                        {"phone", phone},
@@ -13,21 +13,21 @@ void Cli_Account::Register(const std::string& username, const std::string& email
 
 void Cli_Account::Login(const std::string& account, const std::string& pwd){
     nlohmann::json request;
-    request["type"] = MSG_LOGIN;
+    request["msg_type"] = MSG_LOGIN;
     request["data"] = {{"username", account}, {"password", pwd}};
     net_->send(request.dump());
 }
 
-void Cli_Account::GetCaptcha(const std::string& email){
+void Cli_Account::GetCaptcha(const std::string& email, const std::string& type) {
     nlohmann::json request;
-    request["type"] = MSG_GET_CAPTCHA;
-    request["data"] = {{"email", email}};
+    request["msg_type"] = MSG_GET_CAPTCHA;
+    request["data"] = {{"email", email}, {"type", "reset"}};
     net_->send(request.dump());
 }
 
 void Cli_Account::ResetPassword(const std::string& email, const std::string& captcha, const std::string& new_pwd){
     nlohmann::json request;
-    request["type"] = MSG_GET_CAPTCHA;
+    request["msg_type"] = MSG_RESET_PWD;
     request["data"] = {
         {"email", email}, {"captcha", captcha}, {"new_password", new_pwd}};
     net_->send(request.dump());
@@ -52,28 +52,15 @@ void Cli_Account::OnLogoutResponse(const nlohmann::json& data) {
 }
 
 void Cli_Account::OnCaptchaResponse(const nlohmann::json& data) {
-    int code = data["code"];
-    if(code==0){
     if(on_captcha_sent)
             on_captcha_sent();
-    }else{
-        std::string msg = data.value("msg", "验证码发送错误");
-        if(on_error)
-            on_error(msg);
-    }
 }
 
 void Cli_Account::OnDeleteResponse(const nlohmann::json& data) {
-    int code = data.value("code", -1);
-    if (code == 0) {
-        // 清除会话
-        Cli_Session::instance().logout();
-        if (on_account_deleted)
-            on_account_deleted();
-    } else {
-        std::string msg = data.value("msg", "注销失败");
-        if (on_error)
-            on_error(msg);
-    }
+    // 清除会话
+    Cli_Session::instance().logout();
+    if (on_account_deleted)
+        on_account_deleted();
+
 }
 
