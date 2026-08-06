@@ -10,7 +10,7 @@ public:
 
  void Register(const std::string& username, const std::string& email, const std::string& pwd, const std::string& phone);
  void Login(const std::string& account, const std::string& pwd);
- void GetCaptcha(const std::string& email); 
+ void GetCaptcha(const std::string& email, const std::string& type);
  void ResetPassword(const std::string& email, const std::string& captcha, const std::string& new_pwd);
 
  // 处理服务端响应
