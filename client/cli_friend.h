@@ -9,7 +9,7 @@ public:
  Cli_Friend(Cli_Network* net):net_(net){}
 
  void seack_user(const std::string& account);
- void add_friend(uint64_t friend_id,uint64_t user_id);
+ void add_friend(uint64_t friend_id,uint64_t user_id,const std::string& msg);
  void agree_friend(uint64_t apply_id,uint64_t agree_id);
  void refuse_friend(uint64_t apply_id, uint64_t agree_id);
  void delete_friend(uint64_t user_id);
