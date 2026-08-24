@@ -101,8 +101,7 @@ std::string Cli_BigFile::file_name(const std::string& file) {
     }
 }
 
-static bool SaveDownloadMeta(const std::string& meta_path,
-                             long long downloaded) {
+static bool SaveDownloadMeta(const std::string& meta_path, long long downloaded) {
     std::string tmp_path = meta_path + ".tmp";
     int fd = open(tmp_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0)
@@ -136,8 +135,7 @@ static bool SaveDownloadMeta(const std::string& meta_path,
     return true;
 }
 
-static bool LoadDownloadMeta(const std::string& meta_path,
-                             long long& downloaded) {
+static bool LoadDownloadMeta(const std::string& meta_path, long long& downloaded) {
     downloaded = 0;
     std::ifstream fp(meta_path);
     if (!fp.is_open())
@@ -148,8 +146,7 @@ static bool LoadDownloadMeta(const std::string& meta_path,
     return true;
 }
 
-bool Cli_BigFile::Upload(const std::string& local_path,
-                         const std::string& remote_name) {
+bool Cli_BigFile::Upload(const std::string& local_path, const std::string& remote_name) {
     if (ctrlfd_ < 0) {
         std::cerr << "未连接到FTP服务器" << std::endl;
         return false;
@@ -217,8 +214,7 @@ bool Cli_BigFile::Upload(const std::string& local_path,
 
     // 告诉内核这是顺序读取
     if (local_total > start_offset) {
-        posix_fadvise(fd, start_offset, local_total - start_offset,
-                      POSIX_FADV_SEQUENTIAL);
+        posix_fadvise(fd, start_offset, local_total - start_offset, POSIX_FADV_SEQUENTIAL);
     }
 
     off_t remain = local_total - start_offset;
@@ -393,27 +389,26 @@ bool Cli_BigFile::Download(const std::string& remote_name, const std::string& lo
               << std::filesystem::path(real_name).filename().string()
               << std::endl;
 
-    char buf[BUF_SIZE];
+    std::vector<char> buf(BUF_SIZE);
     int n;
     long long downloaded = local_size;
     long long last_checkpoint = local_size;
     auto last_progress_time = std::chrono::steady_clock::now();
-    constexpr long long CHECKPOINT_SIZE = 64LL * 1024 * 1024;
+    constexpr long long CHECKPOINT_SIZE = 256LL * 1024 * 1024;
 
     while (downloaded < remote_size) {
         long long remain_bytes = remote_size - downloaded;
         int recv_size =
             static_cast<int>(std::min<long long>(BUF_SIZE, remain_bytes));
-        n = recv(ctrlfd_, buf, recv_size, 0);
+        n = recv(ctrlfd_, buf.data(), recv_size, 0);
         if (n > 0) {
             int written = 0;
             while (written < n) {
-                ssize_t m = write(fd, buf + written, n - written);
+                ssize_t m = write(fd, buf.data() + written, n - written);
                 if (m < 0) {
                     if (errno == EINTR)
                         continue;
-                    LOG(ERROR)
-                        << "写文件失败: " << strerror(errno) << std::endl;
+                    LOG(ERROR) << "写文件失败: " << strerror(errno) << std::endl;
                     close(fd);
                     close(ctrlfd_);
                     ctrlfd_ = -1;
@@ -431,19 +426,11 @@ bool Cli_BigFile::Download(const std::string& remote_name, const std::string& lo
             downloaded += n;
             // 100ms刷新一次进度
             auto now = std::chrono::steady_clock::now();
-            if (on_progress && remote_size > 0 &&
-                now - last_progress_time >= std::chrono::milliseconds(100)) {
+            if (on_progress && remote_size > 0 && now - last_progress_time >= std::chrono::milliseconds(100)) {
                 on_progress(downloaded, remote_size);
                 last_progress_time = now;
             }
 
-            if (downloaded - last_checkpoint >= CHECKPOINT_SIZE) {
-                fsync(fd);
-                if (!SaveDownloadMeta(meta_path, downloaded)) {
-                    LOG(WARNING) << "保存下载断点失败" << std::endl;
-                }
-                last_checkpoint = downloaded;
-            }
             continue;
         }
         if (n == 0) {
@@ -472,8 +459,7 @@ bool Cli_BigFile::Download(const std::string& remote_name, const std::string& lo
     }
     // 中断：保存最终断点
     SaveDownloadMeta(meta_path, downloaded);
-    std::cout << "\n下载中断，已保存 " << downloaded << " / " << remote_size
-              << " 字节" << std::endl;
+    std::cout << "\n下载中断，已保存 " << downloaded << " / " << remote_size << " 字节" << std::endl;
     std::cout << "下次下载将自动断点续传" << std::endl;
     return false;
 }

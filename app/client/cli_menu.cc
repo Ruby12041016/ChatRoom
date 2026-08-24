@@ -1409,13 +1409,19 @@ void Cli_Menu::ChatMap(int chat_type, uint64_t target_id) {
                             }
                             switch (sub) {
                                 case 1: {
-                                    std::string local =
-                                        readline("本地文件路径: ");
-                                    std::string remote =
-                                        readline("远程保存名称: ");
+                                    std::string local = readline("本地文件路径: ");
+                                    std::string remote = readline("远程保存名称: ");
+                                    // 检查本地的文件是否存在
+                                    if (!std::filesystem::exists(local)) {
+                                        std::cout << RED << "[错误] 本地文件不存在\n";
+                                        break;
+                                    }
+                                    if (!std::filesystem::is_regular_file( local)) {
+                                        std::cout << RED << "[错误] 路径不是普通文件（可能是目录）\n";
+                                        break;
+                                    }
                                     // 先发文件消息通知，确认未被屏蔽后再上传
-                                    chat_.send_file(chat_type == 2, target_id,
-                                                    remote);
+                                    chat_.send_file(chat_type == 2, target_id, remote);
                                     WaitForOperation();
                                     if (op_success_) {
                                         if (big_file_.Upload(local, remote))

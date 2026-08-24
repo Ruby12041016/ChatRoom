@@ -37,7 +37,7 @@ class Cli_BigFile {
     bool FindResumeFile(const std::string& save_path, std::string& resume_path, std::string& resume_meta_path);
 
     int ctrlfd_ = -1;
-    static constexpr int BUF_SIZE = 1024*1024;
+    static constexpr int BUF_SIZE = 8*1024*1024;
 };
 
 #endif
