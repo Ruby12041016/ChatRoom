@@ -5,7 +5,7 @@
 #include <netinet/tcp.h>
 
 #define MAX_NUM  5  // listen的backlog参数，表示监听队列的最大长度，最多同时处理5个待处理的连接
-#define BUF_SIZE 1024*1024  // 读写缓冲区的大小，和客户端一致
+#define BUF_SIZE 8*1024*1024  // 读写缓冲区的大小，和客户端一致
 #define THREAD_MAX 10  // 线程池的最大线程数
 #define MAX_SIZE  10000  // epoll的最大事件数，最多同时处理10000个事件，也就是最多支持10000个客户端连接
 
@@ -125,8 +125,6 @@ void do_retr(int connfd, const std::vector<std::string>& commonds) {
 
     int flag = 1;
     setsockopt(connfd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
-    int sndbuf = 4 * 1024 * 1024;
-    setsockopt(connfd, SOL_SOCKET, SO_SNDBUF, &sndbuf, sizeof(sndbuf));
 
     // 读取续传偏移量
     off_t offset = 0;
@@ -201,10 +199,6 @@ void do_stor(int connfd, const std::vector<std::string>& commonds) {
     int flags = fcntl(connfd, F_GETFL, 0);
     fcntl(connfd, F_SETFL, flags & ~O_NONBLOCK);
 
-    // TCP优化：增大接收缓冲区，填满高延迟链路的带宽管道
-    int rcvbuf = 4 * 1024 * 1024;
-    setsockopt(connfd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
-
     // 发送准备接收响应（直接 send，fd 已不在 epoll 中）
     const char* ready_msg = "150 STOR directory!\r\n";
     send(connfd, ready_msg, strlen(ready_msg), 0);
@@ -264,13 +258,18 @@ void do_stor(int connfd, const std::vector<std::string>& commonds) {
         return;
     }
 
-    char buf[BUF_SIZE];
+    // 分配 8MB 缓冲区并绑定到 ofstream 
+    static const size_t BUFFER_SIZE = 8 * 1024 * 1024;  // 8MB
+    std::vector<char> buffer(BUFFER_SIZE);
+    fp.rdbuf()->pubsetbuf(buffer.data(), buffer.size());  // 替换默认的 8KB 为 8MB
+
+    std::vector<char> buf(BUF_SIZE);
     // 循环从控制连接读取客户端发来的文件数据，写入本地文件，直到读完所有数据
     while (1) {
-        int len = recv(connfd, buf, sizeof(buf), 0);
+        int len = recv(connfd, buf.data(), sizeof(buf), 0);
         if (len <= 0)
             break;
-        fp.write(buf, len);
+        fp.write(buf.data(), len);
     }
     fp.close();
 
@@ -285,15 +284,15 @@ void do_stor(int connfd, const std::vector<std::string>& commonds) {
 }
 
 void epoll_read(int connfd) {
-    char buf[BUF_SIZE];
+    std::vector<char> buf(BUF_SIZE);
     while (1) {
         // 循环读取数据，因为是边缘触发，所以要一次性把所有可读的数据都读完，不然就不会再触发事件了
-        memset(buf, 0, sizeof(buf));
-        int n = recv(connfd, buf, sizeof(buf) - 1, 0);
+        memset(buf.data(), 0, sizeof(buf));
+        int n = recv(connfd, buf.data(), sizeof(buf) - 1, 0);
         // 读取成功的话，把数据加到客户端的读缓冲区，因为非阻塞，可能一次读不完一个完整的命令，所以要存起来
         if (n > 0) {
             std::lock_guard<std::mutex> map_lock(clients_mutex);
-            clients[connfd].readbuf.append(buf, n);
+            clients[connfd].readbuf.append(buf.data(), n);
         } else if (n == 0) {
             // n=0说明客户端关闭了连接，输出提示，关闭fd，清理客户端的状态
             LOG(INFO) << "Client disconnect\n";

@@ -106,11 +106,9 @@ void HistoryHandler::handle_group_chat(std::shared_ptr<TCPConnection> conn, cons
     std::string check_member_sql =
         "SELECT status FROM group_member WHERE group_id=? AND member_id=?";
     QueryResult check_member =
-        pool.Query(check_member_sql,
-                   {std::to_string(group_id), std::to_string(sender_id)});
+        pool.Query(check_member_sql, {std::to_string(group_id), std::to_string(sender_id)});
     if (check_member.rows.empty()) {
-        send_error(conn, ERR_NOT_IN_GROUP, MSG_GROUP_CHAT,
-                   "你不在该群中，无法发送消息");
+        send_error(conn, ERR_NOT_IN_GROUP, MSG_GROUP_CHAT, "你不在该群中，无法发送消息");
         return;
     }
 
@@ -181,19 +179,16 @@ void HistoryHandler::handle_get_history(std::shared_ptr<TCPConnection> conn, con
                        {std::to_string(user_id), std::to_string(target_id),
                         std::to_string(target_id), std::to_string(user_id)});
         if (check_friend.rows.empty()) {
-            send_error(conn, ERR_FRIEND_NOT_EXIST, MSG_GET_HISTORY_MSG,
-                       "对方不是好友");
+            send_error(conn, ERR_FRIEND_NOT_EXIST, MSG_GET_HISTORY_MSG, "对方不是好友");
             return;
         }
     } else if (chat_type == 2) {
         std::string check_member_sql =
             "SELECT status FROM group_member WHERE group_id=? AND member_id=?";
         QueryResult check_member =
-            pool.Query(check_member_sql,
-                       {std::to_string(target_id), std::to_string(user_id)});
+            pool.Query(check_member_sql, {std::to_string(target_id), std::to_string(user_id)});
         if (check_member.rows.empty()) {
-            send_error(conn, ERR_NOT_IN_GROUP, MSG_GET_HISTORY_MSG,
-                       "你不在该群中，无法获取消息");
+            send_error(conn, ERR_NOT_IN_GROUP, MSG_GET_HISTORY_MSG, "你不在该群中，无法获取消息");
             return;
         }
         // 更新已读ID
@@ -282,8 +277,7 @@ void HistoryHandler::pushOfflinePrivateMsgs(std::shared_ptr<TCPConnection> conn,
         msg["status"] = std::stoi(row[5]);
         msg["time"] = row[6];
         send_ok(conn, PUSH_PRIVATE_MSG, msg);
-        pool.ExecuteStmt("UPDATE messages SET status = 1 WHERE id = ?",
-                         {row[0]});
+        pool.ExecuteStmt("UPDATE messages SET status = 1 WHERE id = ?", {row[0]});
     }
 }
 
@@ -331,9 +325,7 @@ void HistoryHandler::pushOfflineGroupMsgs(std::shared_ptr<TCPConnection> conn, u
             }
             push["result"] = apply_status == 1 ? "agreed" : "refused";
         } else {
-            LOG(WARNING) << "未知群通知类型: " << type
-                         << ", notification_id=" << notif_id;
-
+            LOG(WARNING) << "未知群通知类型: " << type << ", notification_id=" << notif_id;
             continue;
         }
         send_ok(conn, PUSH_OFFLINE_NOTICE, push);
@@ -359,8 +351,7 @@ void HistoryHandler::pushOfflineGroupMsgs(std::shared_ptr<TCPConnection> conn, u
         push["group_id"] = group_id;
         send_ok(conn, PUSH_OFFLINE_NOTICE, push);
 
-        pool.ExecuteStmt("UPDATE group_apply SET is_pushed = 1 WHERE id = ?",
-                         {std::to_string(apply_id)});
+        pool.ExecuteStmt("UPDATE group_apply SET is_pushed = 1 WHERE id = ?", {std::to_string(apply_id)});
     }
 }
 
@@ -387,8 +378,7 @@ void HistoryHandler::pushRecentGroupMsgs(std::shared_ptr<TCPConnection> conn, ui
             "AND m.id > ? "
             "ORDER BY m.id ASC LIMIT 50";
         QueryResult query_result =
-            pool.Query(query_sql, {std::to_string(gid), std::to_string(user_id),
-                                   std::to_string(last_read)});
+            pool.Query(query_sql, {std::to_string(gid), std::to_string(user_id), std::to_string(last_read)});
 
         uint64_t max_msg_id = 0;
         for (const auto& row_ : query_result.rows) {
@@ -448,8 +438,7 @@ void HistoryHandler::handle_file_msg(std::shared_ptr<TCPConnection> conn, const 
             {std::to_string(sender_id), std::to_string(receiver_id),
              std::to_string(receiver_id), std::to_string(sender_id)});
         if (check_friend.rows.empty()) {
-            send_error(conn, ERR_FRIEND_NOT_EXIST, MSG_FILE_MSG,
-                       "对方不是好友");
+            send_error(conn, ERR_FRIEND_NOT_EXIST, MSG_FILE_MSG, "对方不是好友");
             return;
         }
 
@@ -506,8 +495,7 @@ void HistoryHandler::handle_file_msg(std::shared_ptr<TCPConnection> conn, const 
             }
         }
     }
-    send_ok(conn, MSG_FILE_MSG,
-            {{"msg_id", message_id}, {"status", "success"}});
+    send_ok(conn, MSG_FILE_MSG, {{"msg_id", message_id}, {"status", "success"}});
 }
 
 // 处理文件下载请求
