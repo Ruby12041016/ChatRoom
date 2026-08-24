@@ -121,5 +121,17 @@ make -j$(nproc)
 ### 5.5 实时推送通知
 当有好友申请、私聊、群聊消息、入群申请等事件发生时，客户端会实时弹出推送提示（不会打断当前操作）。
 
+## 6. Docker打包
+
+### 6.1 
+``` bash
+sudo docker compose up -d  #自动启动 chat_server
+```
+### 6.2 客户端启动
+
+``` bash
+sudo docker compose run --rm chat_cli 
+```
+
 ---
 

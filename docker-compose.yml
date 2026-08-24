@@ -28,7 +28,7 @@ services:
     restart: "no"
     stdin_open: true
     tty: true
-    command: ./chat_cli
+    command: ./chat_cli chat_server 8888
     working_dir: /app
     volumes:
       - ./app/build/downloads:/app/downloads
