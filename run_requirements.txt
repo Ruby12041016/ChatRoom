@@ -1,0 +1,7 @@
+libssl3
+libcurl4
+libmysqlclient21
+libhiredis1.1.0
+libgflags2.2
+libgoogle-glog0v6
+ca-certificates

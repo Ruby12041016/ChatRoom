@@ -1,0 +1,6 @@
+__pycache__
+.env
+*.log
+.git
+.vscode
+app/build/

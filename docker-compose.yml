@@ -1,0 +1,69 @@
+version: "3.8"
+# 自动创建自定义网络，服务之间可直接用名字访问
+services:
+  chat_server:
+    build: . 
+    container_name: compose-chat-server
+    restart: always
+    command: ./chat_server
+    working_dir: /app
+    volumes:
+      - ./app/build/files:/app/files  # 本地目录挂载容器数据目录
+    environment:
+      - DB_HOST=mysql-db
+      - DB_USER=root
+      - DB_PASS=123456
+    ports:
+      - "8888:8888"
+      - "2100:2100"
+    depends_on:
+      - mysql-db
+      - redis-db
+    networks:
+      - my_net
+
+  chat_cli:
+    build: .
+    container_name: compose-chat-client
+    restart: "no"
+    stdin_open: true
+    tty: true
+    command: ./chat_cli
+    working_dir: /app
+    volumes:
+      - ./app/build/downloads:/app/downloads
+    depends_on:  
+      - chat_server 
+    networks:
+      - my_net
+
+  mysql-db:
+    image: mysql:8.0
+    container_name: compose-mysql
+    restart: always
+    volumes:
+      - mysql-data:/var/lib/mysql 
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=chat_room
+    networks:
+      - my_net
+
+  redis-db:
+    image: redis
+    container_name: compose-redis
+    restart: always
+    volumes:
+      - redis-data:/data # 命名卷挂载数据库数据
+    command: redis-server --requirepass 1204
+    networks:
+      - my_net
+
+# 声明命名卷
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  my_net:
