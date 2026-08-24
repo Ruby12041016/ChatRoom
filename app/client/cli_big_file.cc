@@ -1,5 +1,7 @@
 #include "cli_big_file.h"
+#include <netdb.h>
 #include <sys/time.h>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -35,14 +37,21 @@ int Cli_BigFile::connect_ser(const std::string& ip, int port) {
     int data_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (data_fd < 0)
         return -1;
-    struct sockaddr_in data_addr{};
-    data_addr.sin_family = AF_INET;
-    data_addr.sin_port = htons(port);
-    inet_pton(AF_INET, ip.c_str(), &data_addr.sin_addr);
-    if (connect(data_fd, (sockaddr*)&data_addr, sizeof(data_addr)) < 0) {
+    struct addrinfo hints, *res;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    std::string port_str = std::to_string(port);
+    if (getaddrinfo(ip.c_str(), port_str.c_str(), &hints, &res) != 0) {
         close(data_fd);
         return -1;
     }
+    if (connect(data_fd, res->ai_addr, res->ai_addrlen) < 0) {
+        freeaddrinfo(res);
+        close(data_fd);
+        return -1;
+    }
+    freeaddrinfo(res);
     return data_fd;
 }
 
@@ -534,7 +543,8 @@ bool Cli_BigFile::FindResumeFile(const std::string& save_path, std::string& resu
         // 提取中间的 index
         size_t index_begin = prefix.size();
         size_t index_end = filename.size() - suffix.size();
-        std::string index_str = filename.substr(index_begin, index_end - index_begin);
+        std::string index_str =
+            filename.substr(index_begin, index_end - index_begin);
         if (index_str.empty())
             continue;
         bool all_digit = true;

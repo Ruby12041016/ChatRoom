@@ -1,4 +1,6 @@
 #include "client.h"
+#include <netdb.h>
+#include <cstring>
 
 // 建立连接，返回是否成功
 bool Client::connectServer() {
@@ -14,18 +16,20 @@ bool Client::connectServer() {
         return false;
     }
 
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port_);
-    if (inet_pton(AF_INET, ip_.c_str(), &addr.sin_addr) <= 0) {
-        LOG(ERROR) << "无效的IP地址";
+    struct addrinfo hints, *res;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    std::string port_str = std::to_string(port_);
+    if (getaddrinfo(ip_.c_str(), port_str.c_str(), &hints, &res) != 0) {
+        LOG(ERROR) << "无法解析地址: " << ip_;
         close(sockfd);
         sockfd = -1;
         return false;
     }
 
-    if (::connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0){
+    if (::connect(sockfd, res->ai_addr, res->ai_addrlen) < 0) {
+        freeaddrinfo(res);
         LOG(ERROR) << "连接服务器失败";
         connected_ = false;
         close(sockfd);
